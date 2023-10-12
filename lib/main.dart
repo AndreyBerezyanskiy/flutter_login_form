@@ -1,12 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:login_form/form_login.dart';
+import 'package:login_form/app.dart';
 
 void main() {
-  runApp(
-    const MaterialApp(
-      home: Scaffold(
-        body: FormLogin(),
-      ),
-    ),
-  );
+  runApp(const App());
 }

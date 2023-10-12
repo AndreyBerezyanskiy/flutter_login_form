@@ -1,18 +1,36 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:login_form/greeting_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+
 import 'package:login_form/style_form_login.dart';
 
-class FormLogin extends StatefulWidget {
-  const FormLogin({super.key});
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
 
   @override
-  State<FormLogin> createState() {
-    return _FormLoginState();
+  State<LoginScreen> createState() {
+    return _LoginScreenState();
   }
 }
 
-class _FormLoginState extends State<FormLogin> {
+class _LoginScreenState extends State<LoginScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   bool _isObscuredText = true;
+
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  void pageRoute(String token) async {
+    SharedPreferences pref = await SharedPreferences.getInstance();
+    await pref.setString('token', token);
+
+    Navigator.push(context,
+        MaterialPageRoute(builder: (context) => const GreetingScreen()));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Form(
@@ -39,6 +57,7 @@ class _FormLoginState extends State<FormLogin> {
               ),
               StyleFormLogin(
                 TextFormField(
+                  controller: _usernameController,
                   decoration: const InputDecoration(
                     hintText: 'Username',
                     border: InputBorder.none,
@@ -61,13 +80,11 @@ class _FormLoginState extends State<FormLogin> {
               ),
               StyleFormLogin(
                 TextFormField(
+                  controller: _passwordController,
                   obscureText: _isObscuredText,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Please enter your password';
-                    }
-                    if (value.length < 8) {
-                      return 'Password must be at least 8 characters';
                     }
                     return null;
                   },
@@ -97,11 +114,38 @@ class _FormLoginState extends State<FormLogin> {
                   ),
                   minimumSize: const Size(300, 50),
                 ),
-                onPressed: () {
+                onPressed: () async {
                   if (_formKey.currentState!.validate()) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Processing Data')),
                     );
+                    String username = _usernameController.text;
+                    String password = _passwordController.text;
+
+                    Map<String, dynamic> credentials = {
+                      'username': username,
+                      'password': password,
+                    };
+
+                    final url = Uri.https(
+                        'api.flutter.simple2b.net', '/api/auth/token');
+                    final response = await http.post(
+                      url,
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                      },
+                      body: json.encode(credentials),
+                    );
+
+                    if (response.statusCode == 200) {
+                      final body = jsonDecode(response.body);
+                      pageRoute(body['access_token']);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Login Failed')),
+                      );
+                    }
                   }
                 },
                 child: const Text('Log In'),
